@@ -20,10 +20,14 @@ public class Main extends Canvas implements Runnable{
 	private BufferedImage image = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
 	private int[] pixels = ((DataBufferInt)image.getRaster().getDataBuffer()).getData();
 	
+	// scene contains all the objects 
+	private Scene scene;
+	
 	public Main() {
 		Dimension size = new Dimension(WIDTH, HEIGHT);
 		setPreferredSize(size);
 		frame = new JFrame();
+		scene = new Scene(WIDTH, HEIGHT);
 	}
 	
 	public synchronized void start() {
@@ -48,9 +52,8 @@ public class Main extends Canvas implements Runnable{
 
 		BufferStrategy bs = getBufferStrategy();
 
-		for(int i = 0; i < WIDTH * HEIGHT; i++) {
-			pixels[i] = 0;
-		}
+		// rendering all the objects 
+		scene.render(pixels);
 		
 		Graphics g = bs.getDrawGraphics();
 		g.drawImage(image, 0, 0, getWidth(), getHeight(), null);
