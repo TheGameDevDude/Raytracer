@@ -51,11 +51,6 @@ public class Main extends Canvas implements Runnable{
 		createBufferStrategy(1);
 
 		BufferStrategy bs = getBufferStrategy();
-
-		// clear screen to black before rendering
-		for(int i = 0; i < WIDTH * HEIGHT; i++) {
-			pixels[i] = 0x000000;
-		}
 		
 		// rendering all the objects 
 		scene.render(pixels);
