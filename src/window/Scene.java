@@ -23,7 +23,7 @@ public class Scene {
 	public Entity plane = new Plane(new Vector3f(0.0f, 1.0f, 0.0f), new Vector3f(0.0f, -1.0f, 0.0f), new Color(50, 20, 200));
 	
 	// all lights in the scene
-	public Light whiteLight = new Light(new Vector3f(0, 2.0f, -1.0f), new Color(255, 255, 255));
+	public Light whiteLight = new Light(new Vector3f(0, 2.0f, -0.5f), new Color(255, 255, 255));
 
 	public Scene(int width, int height) {
 		renderer = new Renderer(width, height);

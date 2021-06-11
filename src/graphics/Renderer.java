@@ -1,5 +1,6 @@
 package graphics;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import math.Ray;
@@ -24,14 +25,15 @@ public class Renderer {
 				// generate rays
 				Ray ray = generateRays(x, y, camera);
 
-				// find the first object's color that gets intersected, if minDistValue is negative then there is no object and the color is black
+				// find the first object's color that gets intersected
 				List<Object> indexAndDistance = findFirstIndexOfObjectIntersectingTheRay(entities, ray);
 				int index = (int) indexAndDistance.get(0);
-				float distance = (float) indexAndDistance.get(1);
+				float minDistance = (float) indexAndDistance.get(1);
 
+				// if index is negative then there is no object being intersected and the color is black
 				Color color = new Color(0, 0, 0);
 				if (index != -1) {
-					color = getColorAtIntersection(ray, distance, index, entities, lights);
+					color = getColorAtIntersection(ray, minDistance, index, entities, lights);
 				}
 
 				// plotting the pixel
@@ -54,8 +56,7 @@ public class Renderer {
 		float xDir = camera.direction.x + (h * yampt * camera.up.x) + (w * xampt * camera.right.x);
 		float yDir = camera.direction.y + (h * yampt * camera.up.y) + (w * xampt * camera.right.y);
 		float zDir = camera.direction.z + (h * yampt * camera.up.z) + (w * xampt * camera.right.z);
-		Vector3f direction = new Vector3f(xDir, yDir, zDir);
-		direction.normalize();
+		Vector3f direction = new Vector3f(xDir, yDir, zDir).normalize();
 
 		// final ray
 		return new Ray(camera.position, direction);
@@ -82,7 +83,69 @@ public class Renderer {
 		return Arrays.asList(index, minDistance);
 	}
 
-	private Color getColorAtIntersection(Ray ray, float distance, int index, List<Entity> entities, List<Light> lights) {
-		return entities.get(index).getColor();
+	private Color getColorAtIntersection(Ray ray, float minDistance, int index, List<Entity> entities, List<Light> lights) {
+		// finding the point of intersection
+		Vector3f direction = ray.direction.scale(minDistance);
+		Vector3f intersectingPoint = new Vector3f(ray.origin.x + direction.x, ray.origin.y + direction.y, ray.origin.z + direction.z);
+		// finding the normal at the point of intersection
+		Vector3f normalAtIntersectingPoint = entities.get(index).getNormal(intersectingPoint);
+		Color objectColor = entities.get(index).getColor();
+
+		// ambient light color of the object
+		int R = objectColor.red / 5, G = objectColor.green / 5, B = objectColor.blue / 5;
+
+		for (Light light : lights) {
+			Vector3f toLightVector = new Vector3f(light.position.x - intersectingPoint.x, light.position.y - intersectingPoint.y, light.position.z - intersectingPoint.z);
+			Vector3f toLightDirection = toLightVector.normalize();
+
+			// the light value at the point of intersection
+			float dot = new Vector3f().dot(normalAtIntersectingPoint, toLightDirection);
+
+			if (dot > 0.0f) {
+				boolean shadowed = false;
+				float distanceOfToLightVector = toLightVector.getMagnitude();
+				Ray rayFromIntersectingPointToLight = new Ray(intersectingPoint, toLightDirection);
+
+				// find the secondary intersections from the ray at the intersection point
+				List<Float> intersections = new ArrayList<Float>();
+				for (Entity entity : entities) {
+					float distance = entity.intersect(rayFromIntersectingPointToLight);
+					if (distance > 0.0001f) {
+						intersections.add(distance);
+					}
+				}
+
+				// if any of the distance of intersections is lesser than the distance of toLightVector then there is a shadow
+				for (int i = 0; i < intersections.size(); i++) {
+					if (intersections.get(i) <= distanceOfToLightVector) {
+						shadowed = true;
+						break;
+					}
+				}
+
+				// for ambient lighting 
+				if (dot < 0.1f) {
+					dot = 0.1f;
+				}
+
+				// if there is no shadow then we can mix light color and object color 
+				if (shadowed == false) {
+					R += (int) ((float) objectColor.red * dot * (float) light.color.red * dot / 255);
+					G += (int) ((float) objectColor.green * dot * (float) light.color.green * dot / 255);
+					B += (int) ((float) objectColor.blue * dot * (float) light.color.blue * dot / 255);
+				}
+
+			}
+		}
+
+		// clamping R, G, B values 
+		if (R >= 255)
+			R = 255;
+		if (G >= 255)
+			G = 255;
+		if (B >= 255)
+			B = 255;
+
+		return new Color(R, G, B);
 	}
 }

@@ -18,16 +18,13 @@ public class Camera {
 		this.position = position;
 		
 		// calculating the direction vector which is pointing at the lookUp point
-		this.direction = new Vector3f(lookUp.x - position.x, lookUp.y - position.y, lookUp.z - position.z);
-		direction.normalize();
+		this.direction = new Vector3f(lookUp.x - position.x, lookUp.y - position.y, lookUp.z - position.z).normalize();
 		
 		// calculating right direction vector which is cross product of Y - axis and direction vector
-		right = new Vector3f().cross(new Vector3f(0, 1, 0), direction);
-		right.normalize();
+		right = new Vector3f().cross(new Vector3f(0, 1, 0), direction).normalize();
 		
 		// calculating up direction vector which is cross product of right direction vector and the direction of camera
-		up = new Vector3f().cross(direction, right);
-		up.normalize();
+		up = new Vector3f().cross(direction, right).normalize();
 		
 		this.FOV = FOV;
 	}
