@@ -26,18 +26,18 @@ public class Sphere extends Entity {
 	public float intersect(Ray ray) {
 		Vector3f p = new Vector3f(ray.origin.x - position.x, ray.origin.y - position.y, ray.origin.z - position.z);
 		float b = 2 * new Vector3f().dot(p, ray.direction);
-		float c = new Vector3f().dot(p, p) - radius * radius;
+		float c = new Vector3f().dot(p, p) - (radius * radius);
 		
 		float discriminant = b * b - 4 * c;
 		
 		// if the discriminant is greater than zero then it intersects the sphere
 		if(discriminant > 0) {
-			float root1 = (float) (-b - Math.sqrt(discriminant)/2);
+			float root1 = (float) ((-b - Math.sqrt(discriminant)) / 2);
 			
 			if(root1 > 0) {
 				return root1;
 			}else {
-				return (float) (-b + Math.sqrt(discriminant)/2);
+				return (float) ((-b + Math.sqrt(discriminant)) / 2);
 			}
 			
 		}else {

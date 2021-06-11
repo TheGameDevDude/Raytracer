@@ -9,8 +9,8 @@ public class Camera {
 	public Vector3f direction;
 	// pointing right from the camera perpendicular to down and direction vector
 	public Vector3f right;
-	// pointing down from the camera perpendicular to right and direction vector
-	public Vector3f down;
+	// pointing up from the camera perpendicular to right and direction vector
+	public Vector3f up;
 	// field of view
 	public double FOV;
 	
@@ -25,9 +25,9 @@ public class Camera {
 		right = new Vector3f().cross(new Vector3f(0, 1, 0), direction);
 		right.normalize();
 		
-		// calculating down down direction vector which is cross product of right direction vector and the direction of camera
-		down = new Vector3f().cross(right, direction);
-		down.normalize();
+		// calculating up direction vector which is cross product of right direction vector and the direction of camera
+		up = new Vector3f().cross(direction, right);
+		up.normalize();
 		
 		this.FOV = FOV;
 	}
