@@ -23,4 +23,8 @@ public class Entity {
 	public float intersect(Ray ray) {
 		return -1;
 	}
+	
+	public boolean getCheckers() {
+		return false;
+	}
 }

@@ -10,17 +10,29 @@ public class Plane extends Entity {
 	// a point on the plane
 	private Vector3f point;
 
+	// for checker patters
+	private boolean checkers;
+
 	public Plane(Vector3f normal, Vector3f point, Color color) {
 		super(color);
 		this.normal = normal;
 		this.point = point;
+		checkers = false;
+	}
+
+	public Plane(Vector3f normal, Vector3f point, boolean checkers) {
+		super(new Color(0, 0, 0, 0.3f));
+		this.normal = normal;
+		this.point = point;
+		this.checkers = checkers;
 	}
 
 	public Vector3f getNormal(Vector3f point) {
 		return normal;
 	}
 
-	// calculating the distance between the origin of ray to the intersection of ray with the plane
+	// calculating the distance between the origin of ray to the intersection of ray
+	// with the plane
 	// detailed explanation given in images/Plane_Intersection.png
 	public float intersect(Ray ray) {
 		float dot = new Vector3f().dot(ray.direction, normal);
@@ -32,5 +44,9 @@ public class Plane extends Entity {
 		}
 
 		return (new Vector3f().dot(point, normal) - new Vector3f().dot(ray.origin, normal)) / new Vector3f().dot(ray.direction, normal);
+	}
+
+	public boolean getCheckers() {
+		return checkers;
 	}
 }

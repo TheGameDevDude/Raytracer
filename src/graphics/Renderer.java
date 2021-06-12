@@ -73,7 +73,7 @@ public class Renderer {
 			float distance = entities.get(i).intersect(ray);
 			if (distance < 0)
 				continue;
-			if (distance < minDistance) {
+			if (distance > 0.0001f && distance < minDistance) {
 				minDistance = distance;
 				index = i;
 			}
@@ -83,17 +83,37 @@ public class Renderer {
 	}
 
 	private Color getColorAtIntersection(Ray ray, float minDistance, int index, Camera camera, List<Entity> entities, List<Light> lights) {
-		// finding the point of intersection
+		// finding the point of intersection and the normal at the point of intersection
 		Vector3f direction = ray.direction.scale(minDistance);
 		Vector3f intersectingPoint = new Vector3f(ray.origin.x + direction.x, ray.origin.y + direction.y, ray.origin.z + direction.z);
-		// finding the normal at the point of intersection
 		Vector3f normalAtIntersectingPoint = entities.get(index).getNormal(intersectingPoint);
-		Color objectColor = entities.get(index).getColor();
 
+		// get material information
+		Color objectColor = getObjectColor(entities.get(index), intersectingPoint);
 		float shininess = objectColor.shininess;
 
 		// ambient light color of the object
 		int R = objectColor.red / 5, G = objectColor.green / 5, B = objectColor.blue / 5;
+
+		// reflections
+		if (shininess > 0.0f) {
+			// calculating reflection ray
+			Vector3f reflectionDirection = calculateReflectedVector(ray.direction, normalAtIntersectingPoint);
+			Ray reflectionRay = new Ray(intersectingPoint, reflectionDirection);
+
+			// finding the firstObject color hit by the reflected ray
+			List<Object> indexAndDistance = findFirstIndexOfObjectIntersectingTheRay(entities, reflectionRay);
+			int reflectionIndex = (int) indexAndDistance.get(0);
+			float reflectionMinDistance = (float) indexAndDistance.get(1);
+
+			// if there is such object then recursively get the color at the intersection point of the reflected ray and mix the color with the reflection color
+			if (reflectionIndex != -1) {
+				Color reflectionColor = getColorAtIntersection(reflectionRay, reflectionMinDistance, reflectionIndex, camera, entities, lights);
+				R += (int) ((float) reflectionColor.red * shininess);
+				G += (int) ((float) reflectionColor.green * shininess);
+				B += (int) ((float) reflectionColor.blue * shininess);
+			}
+		}
 
 		for (Light light : lights) {
 			Vector3f toLightVector = new Vector3f(light.position.x - intersectingPoint.x, light.position.y - intersectingPoint.y, light.position.z - intersectingPoint.z);
@@ -103,26 +123,8 @@ public class Renderer {
 			float lightValue = new Vector3f().dot(normalAtIntersectingPoint, toLightDirection);
 
 			if (lightValue > 0.0f) {
-				boolean shadowed = false;
-				float distanceOfToLightVector = toLightVector.getMagnitude();
-				Ray rayFromIntersectingPointToLight = new Ray(intersectingPoint, toLightDirection);
-
-				// find the secondary intersections from the ray at the intersection point
-				List<Float> intersections = new ArrayList<Float>();
-				for (Entity entity : entities) {
-					float distance = entity.intersect(rayFromIntersectingPointToLight);
-					if (distance > 0.0001f) {
-						intersections.add(distance);
-					}
-				}
-
-				// if any of the distance of intersections is lesser than the distance of toLightVector then there is a shadow
-				for (int i = 0; i < intersections.size(); i++) {
-					if (intersections.get(i) <= distanceOfToLightVector) {
-						shadowed = true;
-						break;
-					}
-				}
+				// to find whether there is a shadow at the point of intersection
+				boolean shadowed = isShadow(toLightVector, intersectingPoint, entities);
 
 				// for ambient lighting
 				if (lightValue < 0.001f) {
@@ -136,19 +138,15 @@ public class Renderer {
 					B += (int) ((float) objectColor.blue * lightValue * (float) light.color.blue / 255);
 
 					if (shininess > 0.0f) {
-						// calculating the reflected ray
-						Vector3f incidentRay = new Vector3f(-toLightVector.x, -toLightVector.y, -toLightVector.z).normalize();
-						float dot = new Vector3f().dot(incidentRay, normalAtIntersectingPoint) * 2.0f;
-						Vector3f normalDirVector = normalAtIntersectingPoint.scale(dot);
-						Vector3f reflectedRay = new Vector3f(incidentRay.x - normalDirVector.x, incidentRay.y - normalDirVector.y, incidentRay.z - normalDirVector.z);
-						Vector3f toCameraDirection = new Vector3f(camera.position.x - intersectingPoint.x, camera.position.y - intersectingPoint.y, camera.position.z - intersectingPoint.z).normalize();
 						// calculating specularity
-						float specularity = (float) Math.pow(Math.max(new Vector3f().dot(toCameraDirection, reflectedRay), 0.0f), 10);
-						
+						Vector3f reflectedVector = calculateReflectedVector(new Vector3f(-toLightVector.x, -toLightVector.y, -toLightVector.z), normalAtIntersectingPoint);
+						Vector3f toCameraDirection = new Vector3f(camera.position.x - intersectingPoint.x, camera.position.y - intersectingPoint.y, camera.position.z - intersectingPoint.z).normalize();
+						float specularity = (float) Math.pow(Math.max(new Vector3f().dot(toCameraDirection, reflectedVector), 0.0f), 10);
+
 						// mixing specularity and shininess with object color and light color
-						R += (int) ((float) objectColor.red * specularity * (float) light.color.red  * shininess/ 255);
-						G += (int) ((float) objectColor.green * specularity * (float) light.color.green  * shininess/ 255);
-						B += (int) ((float) objectColor.blue * specularity * (float) light.color.blue * shininess/ 255);
+						R += (int) ((float) objectColor.red * specularity * (float) light.color.red * shininess / 255);
+						G += (int) ((float) objectColor.green * specularity * (float) light.color.green * shininess / 255);
+						B += (int) ((float) objectColor.blue * specularity * (float) light.color.blue * shininess / 255);
 					}
 				}
 			}
@@ -163,5 +161,61 @@ public class Renderer {
 			B = 255;
 
 		return new Color(R, G, B);
+	}
+
+	// get object color of the winning object
+	private Color getObjectColor(Entity entity, Vector3f intersectingPoint) {
+		Color objectColor = entity.getColor();
+
+		// to give the plane checkers pattern texture
+		if (entity.getCheckers() == true) {
+			int square = (int) Math.floor(intersectingPoint.x) + (int) Math.floor(intersectingPoint.z);
+			if (square % 2 == 0) {
+				objectColor.red = 50;
+				objectColor.green = 50;
+				objectColor.blue = 50;
+			} else {
+				objectColor.red = 200;
+				objectColor.green = 200;
+				objectColor.blue = 200;
+			}
+		}
+
+		return objectColor;
+	}
+
+	// to find whether there is a shadow at the point of intersection
+	private boolean isShadow(Vector3f toLightVector, Vector3f intersectingPoint, List<Entity> entities) {
+		boolean shadowed = false;
+		float distanceOfToLightVector = toLightVector.getMagnitude();
+		Ray rayFromIntersectingPointToLight = new Ray(intersectingPoint, toLightVector.normalize());
+
+		// find the secondary intersections from the ray at the intersection point
+		List<Float> intersections = new ArrayList<Float>();
+		for (Entity entity : entities) {
+			float distance = entity.intersect(rayFromIntersectingPointToLight);
+			if (distance > 0.0001f) {
+				intersections.add(distance);
+			}
+		}
+
+		// if any of the distance of intersections is lesser than the distance of
+		// toLightVector then there is a shadow
+		for (int i = 0; i < intersections.size(); i++) {
+			if (intersections.get(i) <= distanceOfToLightVector) {
+				shadowed = true;
+				break;
+			}
+		}
+
+		return shadowed;
+	}
+
+	// calculating the reflected vector
+	private Vector3f calculateReflectedVector(Vector3f incident, Vector3f normal) {
+		Vector3f incidentVector = new Vector3f(incident.x, incident.y, incident.z).normalize();
+		float dot = new Vector3f().dot(incidentVector, normal) * 2.0f;
+		Vector3f normalDirVector = normal.scale(dot);
+		return new Vector3f(incidentVector.x - normalDirVector.x, incidentVector.y - normalDirVector.y, incidentVector.z - normalDirVector.z);
 	}
 }

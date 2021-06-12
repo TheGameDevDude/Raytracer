@@ -2,4 +2,4 @@
 
 raytracer in progress...
 
-![](images/Render3.PNG)
+![](images/Render4.PNG)
