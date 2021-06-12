@@ -19,8 +19,8 @@ public class Scene {
 
 	// all the objects in the scene
 	public Camera camera = new Camera(new Vector3f(1.5f, 1.5f, -1.0f), new Vector3f(0.0f, 0.0f, 0.0f), 90);
-	public Entity sphere = new Sphere(new Vector3f(), 1, new Color(200, 50, 20, 50.0f));
-	public Entity plane = new Plane(new Vector3f(0.0f, 1.0f, 0.0f), new Vector3f(0.0f, -1.0f, 0.0f), new Color(50, 20, 200, 10.0f));
+	public Entity sphere = new Sphere(new Vector3f(), 1, new Color(200, 50, 20, 0.3f));
+	public Entity plane = new Plane(new Vector3f(0.0f, 1.0f, 0.0f), new Vector3f(0.0f, -1.0f, 0.0f), new Color(50, 20, 200, 0.1f));
 
 	// all lights in the scene
 	public Light whiteLight = new Light(new Vector3f(0, 2.0f, -0.5f), new Color(255, 255, 255));

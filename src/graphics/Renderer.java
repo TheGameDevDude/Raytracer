@@ -125,15 +125,15 @@ public class Renderer {
 				}
 
 				// for ambient lighting
-				if (lightValue < 0.1f) {
-					lightValue = 0.1f;
+				if (lightValue < 0.001f) {
+					lightValue = 0.001f;
 				}
 
 				// if there is no shadow then we can mix light color and object color
 				if (shadowed == false) {
-					R += (int) ((float) objectColor.red * lightValue * (float) light.color.red * lightValue / 255);
-					G += (int) ((float) objectColor.green * lightValue * (float) light.color.green * lightValue / 255);
-					B += (int) ((float) objectColor.blue * lightValue * (float) light.color.blue * lightValue / 255);
+					R += (int) ((float) objectColor.red * lightValue * (float) light.color.red / 255);
+					G += (int) ((float) objectColor.green * lightValue * (float) light.color.green / 255);
+					B += (int) ((float) objectColor.blue * lightValue * (float) light.color.blue / 255);
 
 					if (shininess > 0.0f) {
 						// calculating the reflected ray
@@ -143,12 +143,12 @@ public class Renderer {
 						Vector3f reflectedRay = new Vector3f(incidentRay.x - normalDirVector.x, incidentRay.y - normalDirVector.y, incidentRay.z - normalDirVector.z);
 						Vector3f toCameraDirection = new Vector3f(camera.position.x - intersectingPoint.x, camera.position.y - intersectingPoint.y, camera.position.z - intersectingPoint.z).normalize();
 						// calculating specularity
-						float specularity = (float) Math.pow(Math.max(new Vector3f().dot(toCameraDirection, reflectedRay), 0.0f), shininess);
+						float specularity = (float) Math.pow(Math.max(new Vector3f().dot(toCameraDirection, reflectedRay), 0.0f), 10);
 						
-						// mixing specularity with object color and light color
-						R += (int) ((float) objectColor.red * specularity * (float) light.color.red * specularity / 255);
-						G += (int) ((float) objectColor.green * specularity * (float) light.color.green * specularity / 255);
-						B += (int) ((float) objectColor.blue * specularity * (float) light.color.blue * specularity / 255);
+						// mixing specularity and shininess with object color and light color
+						R += (int) ((float) objectColor.red * specularity * (float) light.color.red  * shininess/ 255);
+						G += (int) ((float) objectColor.green * specularity * (float) light.color.green  * shininess/ 255);
+						B += (int) ((float) objectColor.blue * specularity * (float) light.color.blue * shininess/ 255);
 					}
 				}
 			}
