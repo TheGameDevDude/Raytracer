@@ -33,12 +33,11 @@ public class Renderer {
 				// if index is negative then there is no object being intersected and the color is black
 				Color color = new Color(0, 0, 0);
 				if (index != -1) {
-					color = getColorAtIntersection(ray, minDistance, index, entities, lights);
+					color = getColorAtIntersection(ray, minDistance, index, camera, entities, lights);
 				}
 
 				// plotting the pixel
 				screenPixels[x + y * width] = color.red << 16 | color.green << 8 | color.blue;
-
 			}
 		}
 	}
@@ -83,13 +82,15 @@ public class Renderer {
 		return Arrays.asList(index, minDistance);
 	}
 
-	private Color getColorAtIntersection(Ray ray, float minDistance, int index, List<Entity> entities, List<Light> lights) {
+	private Color getColorAtIntersection(Ray ray, float minDistance, int index, Camera camera, List<Entity> entities, List<Light> lights) {
 		// finding the point of intersection
 		Vector3f direction = ray.direction.scale(minDistance);
 		Vector3f intersectingPoint = new Vector3f(ray.origin.x + direction.x, ray.origin.y + direction.y, ray.origin.z + direction.z);
 		// finding the normal at the point of intersection
 		Vector3f normalAtIntersectingPoint = entities.get(index).getNormal(intersectingPoint);
 		Color objectColor = entities.get(index).getColor();
+
+		float shininess = objectColor.shininess;
 
 		// ambient light color of the object
 		int R = objectColor.red / 5, G = objectColor.green / 5, B = objectColor.blue / 5;
@@ -99,9 +100,9 @@ public class Renderer {
 			Vector3f toLightDirection = toLightVector.normalize();
 
 			// the light value at the point of intersection
-			float dot = new Vector3f().dot(normalAtIntersectingPoint, toLightDirection);
+			float lightValue = new Vector3f().dot(normalAtIntersectingPoint, toLightDirection);
 
-			if (dot > 0.0f) {
+			if (lightValue > 0.0f) {
 				boolean shadowed = false;
 				float distanceOfToLightVector = toLightVector.getMagnitude();
 				Ray rayFromIntersectingPointToLight = new Ray(intersectingPoint, toLightDirection);
@@ -123,22 +124,37 @@ public class Renderer {
 					}
 				}
 
-				// for ambient lighting 
-				if (dot < 0.1f) {
-					dot = 0.1f;
+				// for ambient lighting
+				if (lightValue < 0.1f) {
+					lightValue = 0.1f;
 				}
 
-				// if there is no shadow then we can mix light color and object color 
+				// if there is no shadow then we can mix light color and object color
 				if (shadowed == false) {
-					R += (int) ((float) objectColor.red * dot * (float) light.color.red * dot / 255);
-					G += (int) ((float) objectColor.green * dot * (float) light.color.green * dot / 255);
-					B += (int) ((float) objectColor.blue * dot * (float) light.color.blue * dot / 255);
-				}
+					R += (int) ((float) objectColor.red * lightValue * (float) light.color.red * lightValue / 255);
+					G += (int) ((float) objectColor.green * lightValue * (float) light.color.green * lightValue / 255);
+					B += (int) ((float) objectColor.blue * lightValue * (float) light.color.blue * lightValue / 255);
 
+					if (shininess > 0.0f) {
+						// calculating the reflected ray
+						Vector3f incidentRay = new Vector3f(-toLightVector.x, -toLightVector.y, -toLightVector.z).normalize();
+						float dot = new Vector3f().dot(incidentRay, normalAtIntersectingPoint) * 2.0f;
+						Vector3f normalDirVector = normalAtIntersectingPoint.scale(dot);
+						Vector3f reflectedRay = new Vector3f(incidentRay.x - normalDirVector.x, incidentRay.y - normalDirVector.y, incidentRay.z - normalDirVector.z);
+						Vector3f toCameraDirection = new Vector3f(camera.position.x - intersectingPoint.x, camera.position.y - intersectingPoint.y, camera.position.z - intersectingPoint.z).normalize();
+						// calculating specularity
+						float specularity = (float) Math.pow(Math.max(new Vector3f().dot(toCameraDirection, reflectedRay), 0.0f), shininess);
+						
+						// mixing specularity with object color and light color
+						R += (int) ((float) objectColor.red * specularity * (float) light.color.red * specularity / 255);
+						G += (int) ((float) objectColor.green * specularity * (float) light.color.green * specularity / 255);
+						B += (int) ((float) objectColor.blue * specularity * (float) light.color.blue * specularity / 255);
+					}
+				}
 			}
 		}
 
-		// clamping R, G, B values 
+		// clamping R, G, B values
 		if (R >= 255)
 			R = 255;
 		if (G >= 255)
