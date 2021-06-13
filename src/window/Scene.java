@@ -26,7 +26,7 @@ public class Scene {
 	public Light whiteLight = new Light(new Vector3f(0, 2.0f, -0.5f), new Color(255, 255, 255));
 
 	public Scene(int width, int height) {
-		renderer = new Renderer(width, height);
+		renderer = new Renderer(width, height, 4);
 		entities.add(plane);
 		entities.add(sphere);
 		lights.add(whiteLight);

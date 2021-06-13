@@ -11,54 +11,110 @@ import objects.Entity;
 public class Renderer {
 	private int width;
 	private int height;
+	private int aaDepth;
 
-	public Renderer(int width, int height) {
+	public Renderer(int width, int height, int aaDepth) {
 		this.width = width;
 		this.height = height;
+		this.aaDepth = aaDepth;
 	}
 
-	// producing bunch of rays from the camera to the target
+	// ray-tracing happens here
 	public void render(int[] screenPixels, Camera camera, List<Entity> entities, List<Light> lights) {
 		for (int y = 0; y < height; y++) {
 			for (int x = 0; x < width; x++) {
 
-				// generate rays
-				Ray ray = generateRays(x, y, camera);
+				// stores all colors for one pixel
+				int[] red = new int[aaDepth * aaDepth];
+				int[] green = new int[aaDepth * aaDepth];
+				int[] blue = new int[aaDepth * aaDepth];
 
-				// find the first object's color that gets intersected
-				List<Object> indexAndDistance = findFirstIndexOfObjectIntersectingTheRay(entities, ray);
-				int index = (int) indexAndDistance.get(0);
-				float minDistance = (float) indexAndDistance.get(1);
+				// another loop for antialiasing
+				for (int aay = 0; aay < aaDepth; aay++) {
+					for (int aax = 0; aax < aaDepth; aax++) {
+						// generate rays
+						Ray ray = generateRays(x, y, camera, aaDepth, aax, aay);
 
-				// if index is negative then there is no object being intersected and the color is black
-				Color color = new Color(0, 0, 0);
-				if (index != -1) {
-					color = getColorAtIntersection(ray, minDistance, index, camera, entities, lights);
+						// find the first object's color that gets intersected
+						List<Object> indexAndDistance = findFirstIndexOfObjectIntersectingTheRay(entities, ray);
+						int index = (int) indexAndDistance.get(0);
+						float minDistance = (float) indexAndDistance.get(1);
+
+						// if index is negative then there is no object being intersected and the color is black
+						Color color = new Color(0, 0, 0);
+						if (index != -1) {
+							color = getColorAtIntersection(ray, minDistance, index, camera, entities, lights);
+						}
+
+						red[aax + aay * aaDepth] = color.red;
+						green[aax + aay * aaDepth] = color.green;
+						blue[aax + aay * aaDepth] = color.blue;
+					}
 				}
 
-				// plotting the pixel
-				screenPixels[x + y * width] = color.red << 16 | color.green << 8 | color.blue;
+				// getting the average of all the colors for one pixel (antialiasing)
+				int finalRed = 0, finalGreen = 0, finalBlue = 0;
+
+				for (int r = 0; r < red.length; r++) {
+					finalRed += red[r];
+				}
+
+				for (int g = 0; g < green.length; g++) {
+					finalGreen += green[g];
+				}
+
+				for (int b = 0; b < blue.length; b++) {
+					finalBlue += blue[b];
+				}
+
+				finalRed /= red.length;
+				finalGreen /= blue.length;
+				finalBlue /= green.length;
+
+				screenPixels[x + y * width] = finalRed << 16 | finalGreen << 8 | finalBlue;
+
 			}
 		}
 	}
 
-	private Ray generateRays(int x, int y, Camera camera) {
-		float h = (float) Math.tan(camera.FOV / 2);
-		float aspectRatio = (float) width / (float) height;
-		float w = aspectRatio * h;
+	private Ray generateRays(int x, int y, Camera camera, int aaDepth, int aax, int aay) {
+		// if aaDepth is 1 then there is no antialiasing
+		if (aaDepth == 1) {
+			float h = (float) Math.tan(camera.FOV / 2);
+			float aspectRatio = (float) width / (float) height;
+			float w = aspectRatio * h;
 
-		// converting x and y to -1 to 1
-		float xampt = (2.0f * (float) x / (float) width) - 1.0f;
-		float yampt = (2.0f * ((float) height - (float) y) / (float) height) - 1.0f;
+			// converting x and y to -1 to 1
+			float xampt = (2.0f * (float) x / (float) width) - 1.0f;
+			float yampt = (2.0f * ((float) height - (float) y) / (float) height) - 1.0f;
 
-		// calculating the direction of rays
-		float xDir = camera.direction.x + (h * yampt * camera.up.x) + (w * xampt * camera.right.x);
-		float yDir = camera.direction.y + (h * yampt * camera.up.y) + (w * xampt * camera.right.y);
-		float zDir = camera.direction.z + (h * yampt * camera.up.z) + (w * xampt * camera.right.z);
-		Vector3f direction = new Vector3f(xDir, yDir, zDir).normalize();
+			// calculating the direction of rays
+			float xDir = camera.direction.x + (h * yampt * camera.up.x) + (w * xampt * camera.right.x);
+			float yDir = camera.direction.y + (h * yampt * camera.up.y) + (w * xampt * camera.right.y);
+			float zDir = camera.direction.z + (h * yampt * camera.up.z) + (w * xampt * camera.right.z);
+			Vector3f direction = new Vector3f(xDir, yDir, zDir).normalize();
 
-		// final ray
-		return new Ray(camera.position, direction);
+			// final ray
+			return new Ray(camera.position, direction);
+		} else {
+			float h = (float) Math.tan(camera.FOV / 2);
+			float aspectRatio = (float) width / (float) height;
+			float w = aspectRatio * h;
+
+			// converting x and y to -1 to 1
+			float xampt = (2.0f * ((float) x + ((float) aax / (float) (aaDepth - 1))) / (float) width) - 1.0f;
+			float yampt = (2.0f * ((float) height - ((float) y + ((float) aay / (float) (aaDepth - 1)))) / (float) height) - 1.0f;
+
+			// calculating the direction of rays
+			float xDir = camera.direction.x + (h * yampt * camera.up.x) + (w * xampt * camera.right.x);
+			float yDir = camera.direction.y + (h * yampt * camera.up.y) + (w * xampt * camera.right.y);
+			float zDir = camera.direction.z + (h * yampt * camera.up.z) + (w * xampt * camera.right.z);
+			Vector3f direction = new Vector3f(xDir, yDir, zDir).normalize();
+
+			// final ray
+			return new Ray(camera.position, direction);
+		}
+
 	}
 
 	private List<Object> findFirstIndexOfObjectIntersectingTheRay(List<Entity> entities, Ray ray) {
@@ -199,8 +255,7 @@ public class Renderer {
 			}
 		}
 
-		// if any of the distance of intersections is lesser than the distance of
-		// toLightVector then there is a shadow
+		// if any of the distance of intersections is lesser than the distance of toLightVector then there is a shadow
 		for (int i = 0; i < intersections.size(); i++) {
 			if (intersections.get(i) <= distanceOfToLightVector) {
 				shadowed = true;
