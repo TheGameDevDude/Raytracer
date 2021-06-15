@@ -9,9 +9,9 @@ import objects.Camera;
 import objects.Entity;
 
 public class Renderer {
-	private int width;
-	private int height;
-	private int aaDepth;
+	private final int width;
+	private final int height;
+	private final int aaDepth;
 
 	public Renderer(int width, int height, int aaDepth) {
 		this.width = width;
@@ -40,7 +40,8 @@ public class Renderer {
 						int index = (int) indexAndDistance.get(0);
 						float minDistance = (float) indexAndDistance.get(1);
 
-						// if index is negative then there is no object being intersected and the color is black
+						// if index is negative then there is no object being intersected and the color
+						// is black
 						Color color = new Color(0, 0, 0);
 						if (index != -1) {
 							color = getColorAtIntersection(ray, minDistance, index, camera, entities, lights);
@@ -72,21 +73,21 @@ public class Renderer {
 				finalBlue /= green.length;
 
 				screenPixels[x + y * width] = finalRed << 16 | finalGreen << 8 | finalBlue;
-
 			}
 		}
 	}
 
 	private Ray generateRays(int x, int y, Camera camera, int aaDepth, int aax, int aay) {
+
+		float h = (float) Math.tan(camera.FOV / 2);
+		float aspectRatio = (float) width / (float) height;
+		float w = aspectRatio * h;
+
 		// if aaDepth is 1 then there is no antialiasing
 		if (aaDepth == 1) {
-			float h = (float) Math.tan(camera.FOV / 2);
-			float aspectRatio = (float) width / (float) height;
-			float w = aspectRatio * h;
-
 			// converting x and y to -1 to 1
-			float xampt = (2.0f * (float) x / (float) width) - 1.0f;
-			float yampt = (2.0f * ((float) height - (float) y) / (float) height) - 1.0f;
+			float xampt = (2.0f * ((float) x + 0.5f) / (float) width) - 1.0f;
+			float yampt = (2.0f * ((float) height - ((float) y + 0.5f)) / (float) height) - 1.0f;
 
 			// calculating the direction of rays
 			float xDir = camera.direction.x + (h * yampt * camera.up.x) + (w * xampt * camera.right.x);
@@ -97,10 +98,6 @@ public class Renderer {
 			// final ray
 			return new Ray(camera.position, direction);
 		} else {
-			float h = (float) Math.tan(camera.FOV / 2);
-			float aspectRatio = (float) width / (float) height;
-			float w = aspectRatio * h;
-
 			// converting x and y to -1 to 1
 			float xampt = (2.0f * ((float) x + ((float) aax / (float) (aaDepth - 1))) / (float) width) - 1.0f;
 			float yampt = (2.0f * ((float) height - ((float) y + ((float) aay / (float) (aaDepth - 1)))) / (float) height) - 1.0f;
@@ -162,7 +159,8 @@ public class Renderer {
 			int reflectionIndex = (int) indexAndDistance.get(0);
 			float reflectionMinDistance = (float) indexAndDistance.get(1);
 
-			// if there is such object then recursively get the color at the intersection point of the reflected ray and mix the color with the reflection color
+			// if there is such object then recursively get the color at the intersection
+			// point of the reflected ray and mix the color with the reflection color
 			if (reflectionIndex != -1) {
 				Color reflectionColor = getColorAtIntersection(reflectionRay, reflectionMinDistance, reflectionIndex, camera, entities, lights);
 				R += (int) ((float) reflectionColor.red * shininess);
@@ -255,7 +253,8 @@ public class Renderer {
 			}
 		}
 
-		// if any of the distance of intersections is lesser than the distance of toLightVector then there is a shadow
+		// if any of the distance of intersections is lesser than the distance of
+		// toLightVector then there is a shadow
 		for (int i = 0; i < intersections.size(); i++) {
 			if (intersections.get(i) <= distanceOfToLightVector) {
 				shadowed = true;
