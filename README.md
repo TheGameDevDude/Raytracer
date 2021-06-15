@@ -7,7 +7,7 @@ A ray-tracer written completely in java.
 
 # Running the jar
 + Download the latest executable for your OS (Windows/Linux/Mac) from the [releases page](https://github.com/TheGameDevDude/Raytracer/releases) and extract to a new folder.
-+ Type the following command on your terminal to run the jar file : 
++ Type the following command on your terminal to run the jar file: 
 ```
 java -jar .\Raytracer.jar
 ```
